@@ -3,10 +3,10 @@ import time
 import logging
 logging.basicConfig(level=logging.INFO)
 
-consumerKey = "Enter key"
-consumerSecret = "Enter key"
-accessToken = "Enter key"
-accessTokenSecret = "Enter key"
+consumerKey = ""
+consumerSecret = ""
+accessToken = ""
+accessTokenSecret = ""
 
 auth = tweepy.OAuthHandler(consumerKey,consumerSecret)
 auth.set_access_token(accessToken,accessTokenSecret)
@@ -15,8 +15,8 @@ api = tweepy.API(auth, wait_on_rate_limit=True,wait_on_rate_limit_notify=True)
 
 search = "giveaway OR #giveaway OR sweepstakes OR #sweepstakes -filter:retweets -filter:replies"
 badTweetFilter = ["tag","reply","comment","share","bot","sub","subscribe","dm","click","#sugardaddy","#sugarbabe"
-                  , "vbucks", "roblox","fortnite","ipx6","au","taotronics","instagram","#sugarbaby","sugardaddys"]
-goodTweetFilter = ["retweet","#retweet","rt2win"]
+                  , "vbucks", "roblox","fortnite","ipx6","au","taotronics","instagram","#sugarbaby","sugardaddys","sugar","baby","pinned","#sugarmummy","cashapp"]
+goodTweetFilter = ["retweet","#retweet","rt2win","rt","rt!","-rt","#rt","retweet!"]
 nameFilter = ["spotting","Spotting","Spotter","spotter","B0t","Aek_bot","i love","PaperLeaf.ca"]
 
 
@@ -58,6 +58,9 @@ def twitterBot():
                 if(e.api_code == 185):
                     print("Over usage sleeping for 30 min")
                     time.sleep(1800)
+                elif(e.api_code == 161):
+                    print("Unable to follow more people at this time, sleeping for 1 hour")
+                    time.sleep(3600)
                 elif(e.api_code != 327 and e.api_code != 139):
                    print(e.reason)
         print(" Retweet: " + str(retweetCount), flush = True)
