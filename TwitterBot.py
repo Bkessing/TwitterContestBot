@@ -4,67 +4,139 @@ import logging
 import sys
 import re
 import queue
+import json
+import emoji
+import time
+import os
 logging.basicConfig(level=logging.INFO)
 
-consumerKey = ""
-consumerSecret = ""
-accessToken = ""
-accessTokenSecret = ""
+totalRetweet = 0
+totalBlacklistedNames = 0
+totalBlacklistedTweets = 0
+totalLike = 0
+totalFollow = 0
+
+with open('Config.json') as data_file:    
+    data = json.load(data_file)
+
+consumerKey = data["consumer-key"]
+consumerSecret = data["consumer-secret"]
+accessToken = data["access-token-key"]
+accessTokenSecret = data["access-token-secret"]
+search = data["search-query"]
+followKeywords = data["follow-keywords"]
+likeKeywords = data["like-keywords"]
+whitelistTweets = data["whitelist-tweets"]
+blacklistTweets = data["blacklist-tweets"]
+blacklistNames = data["blacklist-names"]
+tweetNumber = data["tweet-number"]
+waitTime = data["wait-time"]
+maxFollowers = data["max-followers"]
+followersToRemove = data["followers-to-remove"]
+regexToReplace = data["regex-to-replace"]
+
 
 auth = tweepy.OAuthHandler(consumerKey,consumerSecret)
 auth.set_access_token(accessToken,accessTokenSecret)
 api = tweepy.API(auth, wait_on_rate_limit=True,wait_on_rate_limit_notify=True)
 non_bmp_map = dict.fromkeys(range(0x10000, sys.maxunicode + 1), 0xfffd)
 
-search = "giveaway OR #giveaway OR sweepstakes OR #sweepstakes -filter:retweets -filter:replies"
-badTweetFilter = ["tag","reply","comment","share","bot","sub","subscribe","dm","click","#sugardaddy","#sugarbabe"
-                  , "vbucks", "roblox","fortnite","ipx6","au","taotronics","instagram","#sugarbaby","sugardaddys","sugar"
-                  ,"baby","pinned","#sugarmummy","cashapp","text"]
-goodTweetFilter = ["retweet","#retweet","rt2win","rt","rt!","-rt","#rt","retweet!"]
-nameFilter = ["spotting","Spotting","Spotter","spotter","B0t","Aek_bot","i love","PaperLeaf.ca"]
 
+
+
+def clean_tweet(tweet):
+    allchars = [str for str in tweet]
+    emoji_list = [c for c in allchars if c in emoji.UNICODE_EMOJI]
+    cleanTweet = ' '.join([str for str in tweet.split() if not any(i in str for i in emoji_list)])
+    cleanTweet = re.sub(regexToReplace,"",cleanTweet)
+    return cleanTweet
 
 def delete_friends():
     q = queue.Queue()
     following = api.friends_ids()
     following.reverse()
-    for f in following:
-        q.put(f)
-    for i in range(0,1000):
-        api.destroy_friendship(q.get_nowait())
-    print("Last 100 friends deleted")
+    for follower in following:
+        q.put(follower)
+    for i in range(0,followersToRemove):
+        api.destroy_friendship(q.get())
+    print("Last 1000 friends deleted")
+
+def createLogFile():
+    localtime = time.asctime( time.localtime(time.time()) )
+    localtime = localtime.replace(" ","_")
+    localtime = localtime.replace(":","_")
+    localtime = localtime.replace("__","_")
+    logName = "logs\log_" + localtime+".json"
+    with open(logName,'w',encoding='utf-8') as f:
+        f.close()
+    return logName
+
+def updateLogFile(logName):
+    log = {}
+    log['log'] = []
+    log['log'].append({
+        'retweets': totalRetweet,
+        'blacklistedNames': totalBlacklistedNames,
+        'blackListedTweets': totalBlacklistedTweets,
+        'liked': totalLike
+    })
+    with open(logName,'w',encoding='utf-8') as f:
+        json.dump(log,f, ensure_ascii=False, indent=4)
+        f.close()
+    
+    
+
+def log(attribute,update):
+    print(test)
+
+def isBlacklisted(tweetArray):
+    for elem in blacklistTweets:
+        if elem in tweetArray:
+            global totalBlacklistedTweets
+            totalBlacklistedTweets += 1
+            return True
+    return False
+
+def isWhitelisted(tweetArray):
+    for elem in whitelistTweets:
+        if elem in tweetArray:
+            return True
+    return False
+def isBlacklistedName(tweet):
+    for elem in blacklistNames:
+        if elem in tweet.author.name:
+            global totalBlacklistedNames
+            totalBlacklistedNames += 1
+            return True
+    return False
     
 def twitterBot():
+    logName = createLogFile()
     while(True):
         retweetCount = 0
         for tweet in tweepy.Cursor(api.search,search, result_type= "latest",count = 100 ).items(1000):
             try:
-                bot = False
-                for elem in nameFilter:
-                    if elem in tweet.author.name:
-                        bot = True
-                        break
-                if bot:
-                    continue
-                text = tweet.text.translate(non_bmp_map)
-                replacedText = re.sub("-|,|:|\ufffd|!","",text)
-                tweetArray = replacedText.split()
+                
+                cleanedTweet = clean_tweet(tweet.text)
+                tweetArray = cleanedTweet.split()
                 tweetArray = [item.lower() for item in tweetArray]
-                badResult = False
-                goodResult = False
-                for elem in badTweetFilter:
-                    if elem in tweetArray:
-                        badResult = True
-                        break
-                for elem in goodTweetFilter:
-                    if elem in tweetArray:
-                        goodResult = True
-                        break
-                if not badResult and goodResult:
-                    if "like" in tweetArray or "fav" in tweetArray or "favorite" in tweetArray or "#like" in tweetArray :
-                        tweet.favorite()
-                    if "follow" in tweetArray  or "#follow" in tweetArray or "following" in tweetArray:
-                        api.create_friendship(tweet.author.screen_name)
+
+                if isBlacklistedName(tweet):
+                    continue
+
+                if not isBlacklisted(tweetArray) and isWhitelisted(tweetArray):
+                    for elem in likeKeywords:
+                        if elem in tweetArray:
+                            global totalLike
+                            tweet.favorite()
+                            totalLike += 1
+                            break
+                    for elem in followKeywords:
+                        if elem in tweetArray:
+                            global totalFollow
+                            api.create_friendship(tweet.author.screen_name)
+                            totalFollow += 1
+                            break
                     tweet.retweet()
                     retweetCount = retweetCount + 1
                 else:
@@ -76,12 +148,15 @@ def twitterBot():
                 elif(e.api_code == 161):
                     print("Can't follow")
                 elif(e.api_code != 327 and e.api_code != 139):
-                   print(e.reason)
+                   print(e)
         if retweetCount > 0:
             print(" Retweet: " + str(retweetCount), flush = True)
-        if(len(api.friends_ids()) >= 5000):
+            global totalRetweet
+            totalRetweet += retweetCount
+        if(len(api.friends_ids()) >= maxFollowers):
             delete_friends()
-        time.sleep(300)
+        updateLogFile(logName)
+        time.sleep(waitTime)
            
 
 twitterBot()
