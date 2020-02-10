@@ -84,10 +84,6 @@ def updateLogFile(logName):
         json.dump(log,f, ensure_ascii=False, indent=4)
         f.close()
     
-    
-
-def log(attribute,update):
-    print(test)
 
 def isBlacklisted(tweetArray):
     for elem in blacklistTweets:
@@ -114,9 +110,9 @@ def twitterBot():
     logName = createLogFile()
     while(True):
         retweetCount = 0
-        for tweet in tweepy.Cursor(api.search,search, result_type= "latest",count = 100 ).items(1000):
-            try:
-                
+        try:
+            for tweet in tweepy.Cursor(api.search,search, result_type= "latest",count = 100 ).items(1000):
+                    
                 cleanedTweet = clean_tweet(tweet.text)
                 tweetArray = cleanedTweet.split()
                 tweetArray = [item.lower() for item in tweetArray]
@@ -141,14 +137,14 @@ def twitterBot():
                     retweetCount = retweetCount + 1
                 else:
                     continue
-            except tweepy.TweepError as e:
-                if(e.api_code == 185):
-                    print("Over usage sleeping for 30 min")
-                    time.sleep(1800)
-                elif(e.api_code == 161):
-                    print("Can't follow")
-                elif(e.api_code != 327 and e.api_code != 139):
-                   print(e)
+        except tweepy.TweepError as e:
+            if(e.api_code == 185):
+                print("Over usage sleeping for 30 min")
+                time.sleep(1800)
+            elif(e.api_code == 161):
+                print("Can't follow")
+            elif(e.api_code != 327 and e.api_code != 139):
+               print(e)
         if retweetCount > 0:
             print(" Retweet: " + str(retweetCount), flush = True)
             global totalRetweet

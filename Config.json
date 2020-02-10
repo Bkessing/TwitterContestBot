@@ -1,5 +1,5 @@
 {
-    "search-query": "giveaway OR sweepstakes OR retweet and win OR rt to win  -filter:retweets -filter:replies",
+    "search-query": "giveaway OR sweepstakes OR retweet and win OR rt to win OR steam giveaway -filter:retweets -filter:replies",
     "follow-keywords": ["follow", "follower", "following"],
     "like-keywords": ["fav", "favorite","like"],
 	"whitelist-tweets": ["retweet","rt","rt2win"],
