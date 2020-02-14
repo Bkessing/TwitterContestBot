@@ -10,15 +10,18 @@ import time
 import os
 logging.basicConfig(level=logging.INFO)
 
+# Variables for logging
 total_retweet = 0
 total_blacklisted_names = 0
 total_blacklisted_tweets = 0
 total_like = 0
 total_follow = 0
 
+# Loading Configuration file
 with open('Config.json') as data_file:    
     data = json.load(data_file)
 
+# Putting data from configuration file into variables
 consumer_key = data["consumer-key"]
 consumer_secret = data["consumer-secret"]
 access_token = data["access-token-key"]
@@ -36,14 +39,17 @@ followers_to_remove = data["followers-to-remove"]
 regex_to_replace = data["regex-to-replace"]
 
 
+# Twitter auth
 auth = tweepy.OAuthHandler(consumer_key,consumer_secret)
 auth.set_access_token(access_token,access_token_secret)
 api = tweepy.API(auth, wait_on_rate_limit=True,wait_on_rate_limit_notify=True)
+
+# Used to translate strings with non uniform characters
 non_bmp_map = dict.fromkeys(range(0x10000, sys.maxunicode + 1), 0xfffd)
 
 
 
-
+# Removes non need characters from tweet
 def clean_tweet(tweet):
     allchars = [str for str in tweet]
     emoji_list = [c for c in allchars if c in emoji.UNICODE_EMOJI]
@@ -51,6 +57,7 @@ def clean_tweet(tweet):
     clean_tweet = re.sub(regex_to_replace,"",clean_tweet)
     return clean_tweet
 
+# unfollows friends or followers
 def delete_friends():
     q = queue.Queue()
     following = api.friends_ids()
@@ -61,6 +68,7 @@ def delete_friends():
         api.destroy_friendship(q.get())
     print("Last 1000 friends deleted")
 
+# Creates the log file
 def createLogFile():
     local_time = time.asctime( time.local_time(time.time()) )
     local_time = local_time.replace(" ","_")
@@ -71,20 +79,21 @@ def createLogFile():
         f.close()
     return log_name
 
+# Updates the log file
 def updateLogFile(log_name):
     log = {}
     log['log'] = []
     log['log'].append({
         'retweets': total_retweet,
-        'blacklistedNames': total_blacklisted_names,
-        'blackListedTweets': total_blacklisted_tweets,
+        'blacklisted-names': total_blacklisted_names,
+        'blackListed-tweets': total_blacklisted_tweets,
         'liked': total_like
     })
     with open(log_name,'w',encoding='utf-8') as f:
         json.dump(log,f, ensure_ascii=False, indent=4)
         f.close()
     
-
+# Returns true if the tweet contains a word in the blacklisted array
 def isBlacklisted(tweet_array):
     for elem in blacklist_tweets:
         if elem in tweet_array:
@@ -92,13 +101,15 @@ def isBlacklisted(tweet_array):
             total_blacklisted_tweets += 1
             return True
     return False
-
+    
+# Returns true if the tweet contains a word in the whitelisted array
 def isWhitelisted(tweet_array):
     for elem in whitelist_tweets:
         if elem in tweet_array:
             return True
     return False
-    
+
+# Returns true if the author of the tweet is in the blacklisted name array
 def isBlacklistedName(tweet):
     for elem in blacklist_names:
         if elem in tweet.author.name:
@@ -107,6 +118,7 @@ def isBlacklistedName(tweet):
             return True
     return False
     
+# Main loop to search and retweet tweets
 def twitterBot():
     log_name = createLogFile()
     while(True):
