@@ -70,7 +70,7 @@ def delete_friends():
 
 # Creates the log file
 def createLogFile():
-    local_time = time.asctime( time.local_time(time.time()) )
+    local_time = time.asctime( time.localtime(time.time()) )
     local_time = local_time.replace(" ","_")
     local_time = local_time.replace(":","_")
     local_time = local_time.replace("__","_")
@@ -120,27 +120,27 @@ def isBlacklistedName(tweet):
     
 # Main loop to search and retweet tweets
 def twitterBot():
-    log_name = createLogFile()
+    #log_name = createLogFile()
     while(True):
         retweet_count = 0
-        try:
-            for tweet in tweepy.Cursor(api.search,search, result_type= "latest",count = 100 ).items(tweet_number):
-                    
+      
+        for tweet in tweepy.Cursor(api.search,search, result_type= "latest",count = 100 ).items(tweet_number):
+            try:    
                 cleaned_tweet = clean_tweet(tweet.text)
-                tweet_trray = cleaned_tweet.split()
+                tweet_array = cleaned_tweet.split()
                 tweet_array = [item.lower() for item in tweet_array]
 
                 if isBlacklistedName(tweet):
                     continue
 
                 if not isBlacklisted(tweet_array) and isWhitelisted(tweet_array):
-                    for elem in likeKeywords:
+                    for elem in like_keywords:
                         if elem in tweet_array:
-                            global totalLike
+                            global total_like
                             tweet.favorite()
                             total_like += 1
                             break
-                    for elem in followKeywords:
+                    for elem in follow_keywords:
                         if elem in tweet_array:
                             global total_follow
                             api.create_friendship(tweet.author.screen_name)
@@ -150,21 +150,21 @@ def twitterBot():
                     retweet_count += 1
                 else:
                     continue
-        except tweepy.TweepError as e:
-            if(e.api_code == 185):
-                print("Over usage sleeping for 30 min")
-                time.sleep(1800)
-            elif(e.api_code == 161):
-                print("Can't follow")
-            elif(e.api_code != 327 and e.api_code != 139):
-               print(e)
+            except tweepy.TweepError as e:
+                if(e.api_code == 185):
+                    print("Over usage sleeping for 30 min")
+                    time.sleep(1800)
+                elif(e.api_code == 161):
+                    print("Can't follow")
+                elif(e.api_code != 327 and e.api_code != 139):
+                   print(e)
         if retweet_count > 0:
             print(" Retweet: " + str(retweet_count), flush = True)
             global total_retweet
             total_retweet += retweet_count
         if(len(api.friends_ids()) >= max_followers):
             delete_friends()
-        updateLogFile(log_name)
+       # updateLogFile(log_name)
         time.sleep(wait_time)
            
 
